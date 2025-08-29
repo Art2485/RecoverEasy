@@ -1,0 +1,45 @@
+name: Android CI – Build APK
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: |
+          git config --global core.autocrlf false
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Repair Gradle wrapper JAR (8+ compatible)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PROP=gradle/wrapper/gradle-wrapper.properties
+          URL=$(grep distributionUrl "$PROP" | cut -d= -f2- | tr -d '\r')
+          VER=$(echo "$URL" | sed -nE 's@.*/gradle-([0-9.]+)-bin\.zip@\1@p')
+          curl -fsSL "$URL" -o gradle.zip
+          unzip -p gradle.zip "gradle-$VER/lib/gradle-wrapper.jar" > gradle/wrapper/gradle-wrapper.jar
+          rm -f gradle.zip
+
+      - name: Accept licenses & install SDK packages
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: Build Debug APK
+        run: ./gradlew --warning-mode=all :app:assembleDebug
+
+      - name: Upload APK(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
