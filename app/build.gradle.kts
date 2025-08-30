@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.recovereasy"
-    compileSdk = 34
+    namespace "com.recovereasy"   // <- ต้องมี
+    compileSdk 34
 
     defaultConfig {
-        applicationId = "com.recovereasy"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        applicationId "com.recovereasy"   // ควรตรงกับ namespace
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
     }
 
     buildTypes {
