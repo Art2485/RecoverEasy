@@ -1,0 +1,78 @@
+name: Build APK from ZIP
+
+on:
+  push:
+    paths:
+      - 'project.zip'
+      - '.github/workflows/build-zip-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-34
+            build-tools;34.0.0
+            platform-tools
+
+      - name: Ensure project.zip exists
+        run: |
+          if [ ! -f project.zip ]; then
+            echo "::error::project.zip not found at repo root"; exit 1
+          fi
+
+      - name: Unzip project.zip and find gradlew
+        run: |
+          rm -rf src && mkdir -p src
+          unzip -q project.zip -d src
+          GRADLEW=$(find src -maxdepth 3 -type f -name gradlew | head -n 1 || true)
+          if [ -z "$GRADLEW" ]; then
+            echo "::error::No 'gradlew' found inside the zip. Zip must contain a standard Android project at its root."
+            find src -maxdepth 3 -print
+            exit 1
+          fi
+          chmod +x "$GRADLEW"
+          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> $GITHUB_ENV
+          echo "Project dir: $(dirname "$GRADLEW")"
+
+      - name: Write local.properties (sdk.dir)
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > "$PROJECT_DIR/local.properties"
+
+      - name: Fix missing Gradle wrapper JAR (optional)
+        run: |
+          WRAPJAR="$PROJECT_DIR/gradle/wrapper/gradle-wrapper.jar"
+          if [ ! -f "$WRAPJAR" ]; then
+            echo "Wrapper jar missing → downloading..."
+            VER=$(grep distributionUrl "$PROJECT_DIR/gradle/wrapper/gradle-wrapper.properties" | sed -E 's/.*gradle-([0-9.]+)-.*/\1/')
+            curl -sLo /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-$VER-bin.zip"
+            unzip -p /tmp/gradle.zip "gradle-$VER/lib/gradle-wrapper.jar" > "$WRAPJAR"
+          fi
+
+      - name: Build Debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          ./gradlew --warning-mode=all --stacktrace :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/**/debug/*.apk
+            ${{ env.PROJECT_DIR }}/**/*.apk
+          if-no-files-found: error
