@@ -1,18 +1,18 @@
 plugins {
-    id("com.android.application") version "8.5.2"
-    id("org.jetbrains.kotlin.android") version "1.9.24"
+    id("com.android.application")
+    kotlin("android")
 }
 
 android {
-    namespace "com.recovereasy"   // <- ต้องมี
-    compileSdk 34
+    namespace = "com.recovereasy"          // ต้องตรงกับโค้ด/แพคเกจจริง
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "com.recovereasy"   // ควรตรงกับ namespace
-        minSdk 24
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        applicationId = "com.recovereasy"
+        minSdk = 21
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
     }
 
     buildTypes {
@@ -23,24 +23,15 @@ android {
                 "proguard-rules.pro"
             )
         }
-        debug {
-            isDebuggable = true
-        }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // ถ้าใช้ viewBinding/compose ค่อยเปิดใช้ตามจริง
+    // buildFeatures { viewBinding = true }
 }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.activity:activity-ktx:1.9.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 }
