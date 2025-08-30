@@ -4,11 +4,9 @@
 
     <application
         android:label="RecoverEasy"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:allowBackup="true"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
-
+        android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -17,6 +15,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
+
 </manifest>
