@@ -5,3 +5,14 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "RecoverEasy"
+include(":app")
