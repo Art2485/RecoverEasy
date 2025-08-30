@@ -1,2 +1,7 @@
-rootProject.name = "RecoverEasy"
-include(":app")
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
