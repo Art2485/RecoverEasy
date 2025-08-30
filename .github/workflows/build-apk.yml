@@ -1,17 +1,14 @@
-name: Build APK
+name: Android CI — Build APK
 
 on:
   push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -25,16 +22,14 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses
 
-      # ไม่ใช้ gradlew แต่ใช้ Gradle 8.9 ที่ action เตรียมให้
       - name: Build with Gradle (no wrapper)
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.9
-          arguments: |
-            :app:assembleDebug
+          arguments: :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
+          name: app-debug.apk
           path: app/build/outputs/apk/debug/*.apk
