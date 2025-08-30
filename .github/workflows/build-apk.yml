@@ -1,4 +1,4 @@
-name: Android CI – Build APK
+name: Build APK
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,33 +22,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept licenses & install cmdline-tools
+      - name: Accept Android licenses
         run: yes | sdkmanager --licenses
 
-      - name: Make gradlew executable (if exists)
-        run: |
-          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
-
-      - name: Repair Gradle wrapper JAR (8.8+ compatible) if missing
-        run: |
-          set -euo pipefail
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Repairing gradle-wrapper.jar"
-            curl -sLo gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
-            unzip -p gradle.zip gradle-8.9/lib/gradle-wrapper.jar > gradle/wrapper/gradle-wrapper.jar
-          fi
-
-      - name: Build Debug APK
-        run: ./gradlew --warning-mode=all --stacktrace :app:assembleDebug
-
-      - name: List APK outputs
-        run: ls -R app/build/outputs/apk || true
+      # ไม่ใช้ gradlew แต่ใช้ Gradle 8.9 ที่ action เตรียมให้
+      - name: Build with Gradle (no wrapper)
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.9
+          arguments: |
+            :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/**/*.apk
-          if-no-files-found: warn
+          path: app/build/outputs/apk/debug/*.apk
