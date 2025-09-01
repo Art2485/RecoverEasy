@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (not used, but keeps workspace)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -20,21 +20,34 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android cmdline-tools
+        run: |
+          set -e
+          sudo mkdir -p /opt/android-sdk
+          echo "ANDROID_HOME=/opt/android-sdk" >> $GITHUB_ENV
+          echo "/opt/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "/opt/android-sdk/platform-tools" >> $GITHUB_PATH
+          curl -sLo /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          sudo unzip -q /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools
+          sudo mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
 
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
+      - name: Accept licenses & install SDK packages
+        shell: bash
+        run: |
+          set -e
+          sdkmanager="`/opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --list >/dev/null 2>&1 || true`"
+          yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --licenses >/dev/null || true
+          /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
-      - name: Create temp Android project (with basic OTG scan UI)
+      - name: Create temp Android project
         shell: bash
         run: |
           set -e
           mkdir -p tmpapp/app/src/main/java/com/recovereasy
-          mkdir -p tmpapp/app/src/main/res/layout
-          mkdir -p tmpapp/app/src/main/res/values
-          mkdir -p tmpapp/app
-
+          mkdir -p tmpapp/app/src/main/res/{layout,values}
           cat > tmpapp/settings.gradle.kts <<'SET'
           pluginManagement {
               repositories {
@@ -66,11 +79,9 @@ jobs:
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
           }
-
           android {
               namespace = "com.recovereasy"
               compileSdk = 34
-
               defaultConfig {
                   applicationId = "com.recovereasy"
                   minSdk = 24
@@ -78,21 +89,17 @@ jobs:
                   versionCode = 1
                   versionName = "1.0"
               }
-
               buildTypes {
                   release { isMinifyEnabled = false }
                   debug { isMinifyEnabled = false }
               }
-
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
               }
               kotlinOptions { jvmTarget = "17" }
-
               buildFeatures { viewBinding = true }
           }
-
           dependencies {
               implementation("androidx.core:core-ktx:1.13.1")
               implementation("androidx.appcompat:appcompat:1.7.0")
@@ -104,31 +111,35 @@ jobs:
           cat > tmpapp/app/src/main/AndroidManifest.xml <<'MANI'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:allowBackup="true"
-                  android:label="RecoverEasy"
-                  android:icon="@android:drawable/sym_def_app_icon"
-                  android:supportsRtl="true"
-                  android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
+            <application
+                android:allowBackup="true"
+                android:label="RecoverEasy"
+                android:icon="@android:drawable/sym_def_app_icon"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.RecoverEasy">
+              <activity
+                  android:name=".MainActivity"
+                  android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
           </manifest>
           MANI
 
           cat > tmpapp/app/src/main/res/values/strings.xml <<'STR'
           <resources>
-              <string name="app_name">RecoverEasy</string>
-              <string name="pick">เลือกโฟลเดอร์ OTG/การ์ด</string>
-              <string name="scan">สแกนโฟลเดอร์</string>
+            <string name="app_name">RecoverEasy</string>
           </resources>
           STR
+
+          cat > tmpapp/app/src/main/res/values/themes.xml <<'THE'
+          <resources>
+            <style name="Theme.RecoverEasy" parent="Theme.MaterialComponents.DayNight.NoActionBar"/>
+          </resources>
+          THE
 
           cat > tmpapp/app/src/main/res/layout/activity_main.xml <<'LAY'
           <?xml version="1.0" encoding="utf-8"?>
@@ -137,101 +148,87 @@ jobs:
               android:padding="16dp"
               android:layout_width="match_parent"
               android:layout_height="match_parent">
-
-              <Button
-                  android:id="@+id/btnPick"
-                  android:text="@string/pick"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"/>
-
-              <Button
-                  android:id="@+id/btnScan"
-                  android:text="@string/scan"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="8dp"/>
-
-              <TextView
-                  android:id="@+id/txt"
-                  android:text="พร้อมใช้งาน (สาธิต)"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="8dp"/>
-
-              <ListView
-                  android:id="@+id/list"
-                  android:layout_width="match_parent"
-                  android:layout_height="0dp"
-                  android:layout_weight="1"/>
+            <Button
+                android:id="@+id/btnPick"
+                android:text="เลือกโฟลเดอร์ OTG/การ์ด"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+            <Button
+                android:id="@+id/btnScan"
+                android:text="สแกนโฟลเดอร์"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"/>
+            <TextView
+                android:id="@+id/txt"
+                android:text="พร้อมใช้งาน (สาธิต)"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"/>
+            <ListView
+                android:id="@+id/list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
           </LinearLayout>
           LAY
 
           cat > tmpapp/app/src/main/java/com/recovereasy/MainActivity.kt <<'KOT'
           package com.recovereasy
 
-          import android.app.Activity
           import android.content.Intent
           import android.net.Uri
           import android.os.Bundle
-          import android.provider.DocumentsContract
           import android.widget.ArrayAdapter
           import android.widget.Toast
           import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
           import androidx.documentfile.provider.DocumentFile
-          import com.recovereasy.databinding.ActivityMainBinding
 
           class MainActivity : AppCompatActivity() {
-              private lateinit var b: ActivityMainBinding
               private var tree: Uri? = null
               private val items = mutableListOf<String>()
-
               private val pick = registerForActivityResult(
                   ActivityResultContracts.OpenDocumentTree()
               ) { uri ->
                   if (uri != null) {
                       contentResolver.takePersistableUriPermission(
                           uri,
-                          Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                          Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                          Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                       )
                       tree = uri
                       Toast.makeText(this, "เลือกโฟลเดอร์แล้ว", Toast.LENGTH_SHORT).show()
                   }
               }
-
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-                  b = ActivityMainBinding.inflate(layoutInflater)
-                  setContentView(b.root)
-
+                  setContentView(R.layout.activity_main)
+                  findViewById<android.widget.Button>(R.id.btnPick).setOnClickListener { pick.launch(tree) }
+                  val list = findViewById<android.widget.ListView>(R.id.list)
                   val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
-                  b.list.adapter = adapter
-
-                  b.btnPick.setOnClickListener { pick.launch(tree) }
-                  b.btnScan.setOnClickListener {
+                  list.adapter = adapter
+                  findViewById<android.widget.Button>(R.id.btnScan).setOnClickListener {
                       val t = tree ?: return@setOnClickListener Toast.makeText(this, "กรุณาเลือกโฟลเดอร์ OTG ก่อน", Toast.LENGTH_SHORT).show()
                       items.clear()
                       val root = DocumentFile.fromTreeUri(this, t)
                       if (root != null && root.isDirectory) {
                           scan(root)
                           adapter.notifyDataSetChanged()
-                          b.txt.text = "พบไฟล์: ${items.size}"
+                          findViewById<android.widget.TextView>(R.id.txt).text = "พบไฟล์: ${items.size}"
                       } else {
                           Toast.makeText(this, "โฟลเดอร์ไม่ถูกต้อง", Toast.LENGTH_SHORT).show()
                       }
                   }
               }
-
               private fun scan(dir: DocumentFile) {
                   dir.listFiles().forEach { f ->
-                      if (f.isDirectory) scan(f)
-                      else items += (f.name ?: "(unknown)")
+                      if (f.isDirectory) scan(f) else items += (f.name ?: "(unknown)")
                   }
               }
           }
           KOT
-      - name: Build Debug APK (Gradle 8.9)
+
+      - name: Build Debug APK (Gradle 8.9, no wrapper)
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.9
@@ -242,8 +239,7 @@ jobs:
         run: |
           mkdir -p out
           cp tmpapp/app/build/outputs/apk/debug/*.apk out/ 2>/dev/null || true
-          cd out
-          zip -9 -r RecoverEasy-APK.zip ./*.apk
+          cd out && zip -9 -r RecoverEasy-APK.zip ./*.apk
 
       - name: Upload ZIP
         uses: actions/upload-artifact@v4
