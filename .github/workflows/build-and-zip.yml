@@ -1,0 +1,50 @@
+name: Build & Zip APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      # ใช้ Gradle 8.9 โดย "ไม่ต้องพึ่ง gradlew" ของโปรเจกต์
+      - name: Build Debug APK with Gradle 8.9
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.9
+          arguments: :app:assembleDebug
+
+      # รวบรวม APK ที่ได้ (เผื่อมีหลายไฟล์) แล้ว zip ให้
+      - name: Zip APKs
+        run: |
+          mkdir -p out
+          # ก๊อป APK ที่ได้ (ถ้ามีหลาย flavor จะกวาดทั้งหมด)
+          find app/build/outputs/apk -name "*.apk" -print -exec cp {} out/ \;
+          cd out
+          # ตั้งชื่อ zip ให้จำง่าย
+          zip -9 -r RecoverEasy-APK.zip ./*.apk
+
+      # อัปโหลดเป็น Artifact ให้กดโหลดได้ทันทีจากหน้า Actions
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RecoverEasy-APK-zip
+          path: out/RecoverEasy-APK.zip
