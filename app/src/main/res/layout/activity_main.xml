@@ -1,15 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:gravity="center"
+    android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/hello"
-        android:layout_width="wrap_content"
+    <Button
+        android:id="@+id/btnPick"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="RecoverEasy"
-        android:textSize="24sp"/>
+        android:text="เลือกโฟลเดอร์ (OTG/SD)" />
+
+    <Button
+        android:id="@+id/btnScan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="สแกนหาไฟล์"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/txt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ยังไม่เริ่มสแกน"
+        android:layout_marginTop="8dp" />
+
+    <ListView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:dividerHeight="1dp" />
+
 </LinearLayout>
