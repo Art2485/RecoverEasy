@@ -11,11 +11,11 @@ import androidx.documentfile.provider.DocumentFile
 import com.recovereasy.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
-    private var tree: Uri? = null
-    private val items = mutableListOf<String>()
+    private var pickedTree: Uri? = null
     private lateinit var binding: ActivityMainBinding
+    private val found = mutableListOf<String>()
 
-    private val pick = registerForActivityResult(
+    private val openTree = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
@@ -23,8 +23,10 @@ class MainActivity : AppCompatActivity() {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
-            tree = uri
+            pickedTree = uri
             Toast.makeText(this, "เลือกโฟลเดอร์แล้ว", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "ยังไม่ได้เลือกโฟลเดอร์", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -33,27 +35,50 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, found)
         binding.list.adapter = adapter
 
-        binding.btnPick.setOnClickListener { pick.launch(tree) }
+        binding.btnPick.setOnClickListener { openTree.launch(null) }
         binding.btnScan.setOnClickListener {
-            val t = tree ?: return@setOnClickListener Toast.makeText(this, "กรุณาเลือกโฟลเดอร์ OTG ก่อน", Toast.LENGTH_SHORT).show()
-            items.clear()
-            val root = DocumentFile.fromTreeUri(this, t)
-            if (root != null && root.isDirectory) {
-                scan(root)
-                adapter.notifyDataSetChanged()
-                binding.txt.text = "พบไฟล์: ${items.size}"
-            } else {
+            val uri = pickedTree
+            if (uri == null) {
+                Toast.makeText(this, "กรุณาเลือกโฟลเดอร์ OTG/SD ก่อน", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val root = DocumentFile.fromTreeUri(this, uri)
+            if (root == null || !root.isDirectory) {
                 Toast.makeText(this, "โฟลเดอร์ไม่ถูกต้อง", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            found.clear()
+            val exts = setOf(
+                // รูป/วิดีโอ/เอกสาร—เพิ่มได้ตามต้องการ
+                "jpg","jpeg","png","gif","webp","heif","heic",
+                "mp4","mkv","mov","avi","3gp","m4v",
+                "mp3","wav","m4a","aac","flac",
+                "pdf","doc","docx","xls","xlsx","ppt","pptx"
+            )
+            scanRecursive(root, exts)
+            adapter.notifyDataSetChanged()
+            binding.txt.text = "พบไฟล์: ${found.size}"
+            if (found.isEmpty()) {
+                Toast.makeText(this, "ไม่พบไฟล์ในโฟลเดอร์นี้", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun scan(dir: DocumentFile) {
+    private fun scanRecursive(dir: DocumentFile, exts: Set<String>) {
         dir.listFiles().forEach { f ->
-            if (f.isDirectory) scan(f) else items += (f.name ?: "(unknown)")
+            if (f.isDirectory) {
+                scanRecursive(f, exts)
+            } else {
+                val name = (f.name ?: "").lowercase()
+                val ok = exts.any { name.endsWith(".$it") }
+                if (ok) {
+                    found += (f.name ?: "(ไม่ทราบชื่อ)")
+                }
+            }
         }
     }
 }
