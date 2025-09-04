@@ -1,4 +1,4 @@
-name: One-shot Android Build
+name: One-shot Android Build (no cache)
 
 on:
   workflow_dispatch:
@@ -32,10 +32,8 @@ jobs:
           sudo mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
 
       - name: Accept licenses & install SDK packages
-        shell: bash
         run: |
           set -e
-          sdkmanager="`/opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --list >/dev/null 2>&1 || true`"
           yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --licenses >/dev/null || true
           /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
             "platform-tools" \
@@ -43,25 +41,17 @@ jobs:
             "build-tools;34.0.0"
 
       - name: Create temp Android project
-        shell: bash
         run: |
           set -e
           mkdir -p tmpapp/app/src/main/java/com/recovereasy
           mkdir -p tmpapp/app/src/main/res/{layout,values}
           cat > tmpapp/settings.gradle.kts <<'SET'
           pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
           }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+              repositories { google(); mavenCentral() }
           }
           rootProject.name = "RecoverEasy"
           include(":app")
@@ -89,14 +79,8 @@ jobs:
                   versionCode = 1
                   versionName = "1.0"
               }
-              buildTypes {
-                  release { isMinifyEnabled = false }
-                  debug { isMinifyEnabled = false }
-              }
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
+              buildTypes { release { isMinifyEnabled = false }; debug { isMinifyEnabled = false } }
+              compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
               kotlinOptions { jvmTarget = "17" }
               buildFeatures { viewBinding = true }
           }
@@ -116,7 +100,7 @@ jobs:
                 android:label="RecoverEasy"
                 android:icon="@android:drawable/sym_def_app_icon"
                 android:supportsRtl="true"
-                android:theme="@style/Theme.RecoverEasy">
+                android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
               <activity
                   android:name=".MainActivity"
                   android:exported="true">
@@ -130,52 +114,27 @@ jobs:
           MANI
 
           cat > tmpapp/app/src/main/res/values/strings.xml <<'STR'
-          <resources>
-            <string name="app_name">RecoverEasy</string>
-          </resources>
+          <resources><string name="app_name">RecoverEasy</string></resources>
           STR
-
-          cat > tmpapp/app/src/main/res/values/themes.xml <<'THE'
-          <resources>
-            <style name="Theme.RecoverEasy" parent="Theme.MaterialComponents.DayNight.NoActionBar"/>
-          </resources>
-          THE
 
           cat > tmpapp/app/src/main/res/layout/activity_main.xml <<'LAY'
           <?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical"
-              android:padding="16dp"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent">
-            <Button
-                android:id="@+id/btnPick"
-                android:text="เลือกโฟลเดอร์ OTG/การ์ด"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-            <Button
-                android:id="@+id/btnScan"
-                android:text="สแกนโฟลเดอร์"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"/>
-            <TextView
-                android:id="@+id/txt"
-                android:text="พร้อมใช้งาน (สาธิต)"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"/>
-            <ListView
-                android:id="@+id/list"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"/>
+              android:orientation="vertical" android:padding="16dp"
+              android:layout_width="match_parent" android:layout_height="match_parent">
+            <Button android:id="@+id/btnPick" android:text="เลือกโฟลเดอร์ OTG/การ์ด"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+            <Button android:id="@+id/btnScan" android:text="สแกนโฟลเดอร์"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
+            <TextView android:id="@+id/txt" android:text="พร้อมใช้งาน (สาธิต)"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
+            <ListView android:id="@+id/list"
+                android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
           </LinearLayout>
           LAY
 
           cat > tmpapp/app/src/main/java/com/recovereasy/MainActivity.kt <<'KOT'
           package com.recovereasy
-
           import android.content.Intent
           import android.net.Uri
           import android.os.Bundle
@@ -184,7 +143,6 @@ jobs:
           import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
           import androidx.documentfile.provider.DocumentFile
-
           class MainActivity : AppCompatActivity() {
               private var tree: Uri? = null
               private val items = mutableListOf<String>()
@@ -221,19 +179,18 @@ jobs:
                   }
               }
               private fun scan(dir: DocumentFile) {
-                  dir.listFiles().forEach { f ->
-                      if (f.isDirectory) scan(f) else items += (f.name ?: "(unknown)")
-                  }
+                  dir.listFiles().forEach { f -> if (f.isDirectory) scan(f) else items += (f.name ?: "(unknown)") }
               }
           }
           KOT
 
-      - name: Build Debug APK (Gradle 8.9, no wrapper)
+      - name: Build Debug APK (Gradle 8.9; cache disabled)
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.9
           build-root-directory: tmpapp
           arguments: :app:assembleDebug
+          cache-disabled: true   # <- ปิด cache กันปัญหาแคชของ GitHub
 
       - name: Zip APKs
         run: |
